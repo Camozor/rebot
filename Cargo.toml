@@ -1,0 +1,9 @@
+[package]
+name = "rebot"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+chromiumoxide = "0.7.0"
+headless_chrome = "1.0.17"
+tokio = { version="1.46.1", features = ["full"] }
