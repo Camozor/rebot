@@ -43,7 +43,9 @@ async fn refresh(ctx: Context<'_>) -> Result<(), Error> {
     let u = ctx.author();
     info!("Refresh command for user id={}", u.id);
 
-    let response = format!("On démarre le scraping intensif (SVP u.gg ne portez pas plainte) !");
+    let response = format!(
+        "On démarre le scraping intensif, ça peut prendre quelques secondes. SVP u.gg ne portez pas plainte !"
+    );
     ctx.say(response).await?;
 
     let mut player_store = ctx.data().player_store.lock().await;
@@ -74,7 +76,7 @@ async fn stat(
             "{} n'est pas enregistré, pense à utiliser la commande /register",
             u.name
         ),
-        Some(player) => format!("{} est rang {}", u.name, player.rank.current_league),
+        Some(player) => format!("**{}** est rang **{}**", u.name, player.rank.pretty_rank()),
     };
 
     ctx.say(response).await?;
