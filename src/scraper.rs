@@ -2,31 +2,33 @@ use chromiumoxide::cdp::browser_protocol::network::{
     EnableParams as NetworkEnableParams, EventRequestWillBeSent,
 };
 use chromiumoxide::{
-    Browser, BrowserConfig, browser::HeadlessMode,
-    cdp::browser_protocol::network::EventLoadingFinished,
+    browser::HeadlessMode, cdp::browser_protocol::network::EventLoadingFinished, Browser,
+    BrowserConfig,
 };
 use tokio::task::spawn_blocking;
-use tokio::time::{Duration, sleep, timeout};
+use tokio::time::{sleep, timeout, Duration};
 
 use chromiumoxide::cdp::browser_protocol::network::GetResponseBodyParams;
 use futures::StreamExt;
 use log::{debug, error, info};
 
 use crate::model::player_stat::PlayerStat;
+use crate::player_store::{PlayerWithStats, RegisteredPlayer};
 
-pub async fn compute_all_stats() {
-    let mut browser = MyBrowser::new().await.expect("Could not create browser");
-    let stats = browser.get_player_stats("https://u.gg/rematch/profile/steam/La%20m%C3%A9sange%20du%20Val%20d'Oise/76561198355389674").await.expect("Error stats");
-    info!("Computed stats: {:?}", stats);
-    browser.close().await;
-}
-
-struct MyBrowser {
+pub struct Scraper {
     browser: Browser,
 }
 
-impl MyBrowser {
-    async fn new() -> Result<Self, Box<dyn std::error::Error>> {
+#[derive(Debug)]
+pub enum ScrapeError {
+    PageInit(String),
+    RequestNotFound,
+    RequestContent,
+    Timeout,
+}
+
+impl Scraper {
+    pub async fn new() -> Result<Self, Box<dyn std::error::Error>> {
         info!("Browser creation");
         let config = BrowserConfig::builder()
             .headless_mode(HeadlessMode::True)
@@ -38,32 +40,58 @@ impl MyBrowser {
         sleep(std::time::Duration::from_secs(5)).await;
 
         spawn_blocking(move || {
-            futures::executor::block_on(async {
-                while let Some(event) = handler.next().await {
-                    if let Err(e) = event {
-                        error!("Future handler error: {:?}", e);
-                    }
-                }
-            });
+            futures::executor::block_on(async { while let Some(_) = handler.next().await {} });
         });
 
-        let my_browser = MyBrowser { browser };
+        let my_browser = Scraper { browser };
 
         Ok(my_browser)
     }
 
-    async fn get_player_stats(
+    // TODO better error handling
+    pub async fn get_players_stats(
         &mut self,
-        url: &str,
-    ) -> Result<PlayerStat, Box<dyn std::error::Error>> {
-        let page = self.browser.new_page("about:blank").await?;
+        registered_players: &Vec<RegisteredPlayer>,
+    ) -> Vec<PlayerWithStats> {
+        let mut players_stats: Vec<PlayerWithStats> = vec![];
+        for player in registered_players {
+            if let Ok(player_stat) = self.get_player_stats(&player.rematch_url).await {
+                players_stats.push(PlayerWithStats {
+                    discord_id: player.discord_id,
+                    display_name: player_stat.player.display_name,
+                    rank: player_stat.rank,
+                });
+            } else {
+                error!("Failed to fetch stats for {}", player.discord_id);
+            }
+        }
 
-        page.execute(NetworkEnableParams::default()).await?;
+        players_stats
+    }
 
-        let mut responses = page.event_listener::<EventRequestWillBeSent>().await?;
-        let mut finished_events = page.event_listener::<EventLoadingFinished>().await?;
+    async fn get_player_stats(&mut self, url: &str) -> Result<PlayerStat, ScrapeError> {
+        let page = self
+            .browser
+            .new_page("about:blank")
+            .await
+            .map_err(|e| ScrapeError::PageInit(e.to_string()))?;
 
-        page.goto(url).await?;
+        page.execute(NetworkEnableParams::default())
+            .await
+            .map_err(|e| ScrapeError::PageInit(e.to_string()))?;
+
+        let mut responses = page
+            .event_listener::<EventRequestWillBeSent>()
+            .await
+            .map_err(|e| ScrapeError::PageInit(e.to_string()))?;
+        let mut finished_events = page
+            .event_listener::<EventLoadingFinished>()
+            .await
+            .map_err(|e| ScrapeError::PageInit(e.to_string()))?;
+
+        page.goto(url)
+            .await
+            .map_err(|e| ScrapeError::PageInit(e.to_string()))?;
 
         let result = async {
             let mut api_profile_request_id = None;
@@ -82,7 +110,7 @@ impl MyBrowser {
                 Some(id) => id,
                 None => {
                     error!("The user profile request was not found.");
-                    return Err("The user profile request was not found.".into());
+                    return Err(ScrapeError::RequestNotFound);
                 }
             };
 
@@ -93,7 +121,8 @@ impl MyBrowser {
                     debug!("Found matching event: {:?}", event);
                     let response_body = page
                         .execute(GetResponseBodyParams::new(event.request_id.clone()))
-                        .await?;
+                        .await
+                        .map_err(|_| ScrapeError::RequestContent)?;
 
                     let body = response_body.body.clone();
                     debug!("event {:?} content: {}", event.request_id, body);
@@ -103,16 +132,12 @@ impl MyBrowser {
                 }
             }
 
-            return Err("Timed out waiting for requests".into());
+            return Err(ScrapeError::Timeout);
         }
         .await;
 
-        page.close().await?;
+        let _ = page.close().await;
 
         result
-    }
-
-    async fn close(&mut self) {
-        let _ = self.browser.close().await;
     }
 }

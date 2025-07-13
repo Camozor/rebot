@@ -27,7 +27,7 @@ async fn register(
     let register_status = player_store.register_player(u.id.into(), &rematch_url);
 
     let response = match register_status {
-        Ok(_) => format!("Très bien {}, on a enregistré ta page u.gg!", u.name),
+        Ok(_) => format!("Très bien {}, on a enregistré ta page u.gg !", u.name),
         Err(RegisterError::WrongUrl(e)) => format!("Fais un effort {}, {}", u.name, e),
     };
     debug!(
@@ -36,6 +36,23 @@ async fn register(
         player_store.registered_players
     );
     ctx.say(response).await?;
+    Ok(())
+}
+
+#[poise::command(slash_command)]
+async fn refresh(ctx: Context<'_>) -> Result<(), Error> {
+    let u = ctx.author();
+
+    info!("Refresh command for user id={}", u.id);
+
+    let response = format!("On démarre le scraping intensif (SVP u.gg ne portez pas plainte) !");
+    ctx.say(response).await?;
+
+    let mut player_store = ctx.data().player_store.lock().await;
+    let _ = player_store.refresh_all().await;
+
+    debug!("Player store state: {:?}", player_store);
+
     Ok(())
 }
 
@@ -51,7 +68,7 @@ impl Discord {
 
         let framework = poise::Framework::builder()
             .options(poise::FrameworkOptions {
-                commands: vec![register()],
+                commands: vec![register(), refresh()],
                 ..Default::default()
             })
             .setup(|ctx, _ready, framework| {

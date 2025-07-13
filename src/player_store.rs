@@ -1,4 +1,4 @@
-use crate::model::player_stat::Rank;
+use crate::{model::player_stat::Rank, scraper::Scraper};
 
 #[derive(Debug)]
 pub struct RegisteredPlayer {
@@ -19,8 +19,14 @@ pub struct PlayerStore {
     pub players: Vec<PlayerWithStats>,
 }
 
+#[derive(Debug)]
 pub enum RegisterError {
     WrongUrl(String),
+}
+
+#[derive(Debug)]
+pub enum RefreshError {
+    Err,
 }
 
 impl PlayerStore {
@@ -64,6 +70,15 @@ impl PlayerStore {
                 rematch_url: rematch_url.to_owned(),
             }),
         }
+
+        Ok(())
+    }
+
+    pub async fn refresh_all(&mut self) -> Result<(), RefreshError> {
+        let mut scraper = Scraper::new().await.map_err(|_| RefreshError::Err)?;
+
+        let result = scraper.get_players_stats(&self.registered_players).await;
+        self.players = result;
 
         Ok(())
     }
