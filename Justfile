@@ -6,3 +6,6 @@ build:
 
 format:
 		cargo fmt
+
+docker_build:
+		docker build -t camzor/rebot .

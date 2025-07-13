@@ -9,7 +9,7 @@
     in {
       defaultPackage.${system} = pkgs.mkShell {
         nativeBuildInputs = with pkgs; [ rustfmt clippy pkg-config openssl ];
-        buildInputs = with pkgs; [ cargo rustc chromium just ];
+        buildInputs = with pkgs; [ cargo rustc docker chromium just ];
 
         RUST_SRC_PATH = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
         CHROME_BIN = "${pkgs.chromium}/bin/chromium";

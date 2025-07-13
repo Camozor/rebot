@@ -5,7 +5,6 @@ use chromiumoxide::{
     Browser, BrowserConfig, browser::HeadlessMode,
     cdp::browser_protocol::network::EventLoadingFinished,
 };
-use tokio::task::spawn_blocking;
 use tokio::time::{Duration, sleep, timeout};
 
 use chromiumoxide::cdp::browser_protocol::network::GetResponseBodyParams;
@@ -17,6 +16,7 @@ use crate::player_store::{PlayerWithStats, RegisteredPlayer};
 
 pub struct Scraper {
     browser: Browser,
+    pub handler_task: tokio::task::JoinHandle<()>,
 }
 
 #[derive(Debug)]
@@ -35,15 +35,17 @@ impl Scraper {
             .build()?;
 
         let (browser, mut handler) = Browser::launch(config).await?;
+        debug!("Browser launched");
 
         // Making sure the browser is ready for stuff
         sleep(std::time::Duration::from_secs(5)).await;
 
-        spawn_blocking(move || {
-            futures::executor::block_on(async { while let Some(_) = handler.next().await {} });
-        });
+        let handler_task = tokio::spawn(async move { while let Some(_) = handler.next().await {} });
 
-        let my_browser = Scraper { browser };
+        let my_browser = Scraper {
+            browser,
+            handler_task,
+        };
 
         Ok(my_browser)
     }
@@ -70,6 +72,7 @@ impl Scraper {
     }
 
     async fn get_player_stats(&mut self, url: &str) -> Result<PlayerStat, ScrapeError> {
+        debug!("get_player_stats - start for url={}", url);
         let page = self
             .browser
             .new_page("about:blank")
@@ -92,6 +95,7 @@ impl Scraper {
         page.goto(url)
             .await
             .map_err(|e| ScrapeError::PageInit(e.to_string()))?;
+        debug!("get_player_stats - browser on page url={}", url);
 
         let result = async {
             let mut api_profile_request_id = None;
