@@ -1,6 +1,9 @@
-use log::debug;
+use log::{debug, error};
 
-use crate::{model::player_stat::Rank, scraper::Scraper};
+use crate::{
+    model::player_stat::Rank,
+    scraper::{Scraper, ScraperInitError},
+};
 
 #[derive(Debug)]
 pub struct RegisteredPlayer {
@@ -79,7 +82,14 @@ impl PlayerStore {
     }
 
     pub async fn refresh_all(&mut self) -> Result<(), RefreshError> {
-        let mut scraper = Scraper::new().await.map_err(|_| RefreshError::Err)?;
+        let scraper = Scraper::new().await;
+        let mut scraper = match scraper {
+            Ok(scraper) => scraper,
+            Err(ScraperInitError::Browser(error)) => {
+                error!("Error initializing scraper: {}", error);
+                return Err(RefreshError::Err);
+            }
+        };
 
         debug!("Scraper created");
 

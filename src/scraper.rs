@@ -27,14 +27,24 @@ pub enum ScrapeError {
     Timeout,
 }
 
+#[derive(Debug)]
+pub enum ScraperInitError {
+    Browser(String),
+}
+
 impl Scraper {
-    pub async fn new() -> Result<Self, Box<dyn std::error::Error>> {
+    pub async fn new() -> Result<Self, ScraperInitError> {
         info!("Browser creation");
         let config = BrowserConfig::builder()
             .headless_mode(HeadlessMode::True)
-            .build()?;
+            .args(["--no-sandbox", "--disable-dev-shm-usage"])
+            .build()
+            .map_err(|e| ScraperInitError::Browser(e.to_string()))?;
 
-        let (browser, mut handler) = Browser::launch(config).await?;
+        let (browser, mut handler) = Browser::launch(config)
+            .await
+            .map_err(|e| ScraperInitError::Browser(e.to_string()))?;
+
         debug!("Browser launched");
 
         // Making sure the browser is ready for stuff

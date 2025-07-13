@@ -33,5 +33,11 @@ RUN apk add --no-cache \
 ENV CHROME_BIN=/usr/bin/chromium-browser
 
 WORKDIR /app
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 COPY --from=builder /app/target/release/rebot .
+RUN chown -R appuser:appgroup /app
+
+USER appuser
+
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 CMD ["/app/rebot"]
