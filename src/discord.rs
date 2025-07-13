@@ -17,7 +17,6 @@ async fn register(
     #[description = "URL rematch"] rematch_url: String,
 ) -> Result<(), Error> {
     let u = ctx.author();
-
     info!(
         "Register command for user id={} with url={}",
         u.id, rematch_url
@@ -42,7 +41,6 @@ async fn register(
 #[poise::command(slash_command)]
 async fn refresh(ctx: Context<'_>) -> Result<(), Error> {
     let u = ctx.author();
-
     info!("Refresh command for user id={}", u.id);
 
     let response = format!("On démarre le scraping intensif (SVP u.gg ne portez pas plainte) !");
@@ -53,6 +51,33 @@ async fn refresh(ctx: Context<'_>) -> Result<(), Error> {
 
     debug!("Player store state: {:?}", player_store);
 
+    Ok(())
+}
+
+#[poise::command(slash_command)]
+async fn stat(
+    ctx: Context<'_>,
+    #[description = "Selected user"] user: Option<serenity::User>,
+) -> Result<(), Error> {
+    let u = user.as_ref().unwrap_or_else(|| ctx.author());
+    info!(
+        "Stat command for author id={}, target user id={}",
+        ctx.author().id,
+        u.id
+    );
+
+    let player_store = ctx.data().player_store.lock().await;
+    let player_stat = player_store.get_player_stat(u.id.into());
+
+    let response = match player_stat {
+        None => format!(
+            "{} n'est pas enregistré, pense à utiliser la commande /register",
+            u.name
+        ),
+        Some(player) => format!("{} est rang {}", u.name, player.rank.current_league),
+    };
+
+    ctx.say(response).await?;
     Ok(())
 }
 
@@ -68,7 +93,7 @@ impl Discord {
 
         let framework = poise::Framework::builder()
             .options(poise::FrameworkOptions {
-                commands: vec![register(), refresh()],
+                commands: vec![register(), refresh(), stat()],
                 ..Default::default()
             })
             .setup(|ctx, _ready, framework| {

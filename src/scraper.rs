@@ -2,11 +2,11 @@ use chromiumoxide::cdp::browser_protocol::network::{
     EnableParams as NetworkEnableParams, EventRequestWillBeSent,
 };
 use chromiumoxide::{
-    browser::HeadlessMode, cdp::browser_protocol::network::EventLoadingFinished, Browser,
-    BrowserConfig,
+    Browser, BrowserConfig, browser::HeadlessMode,
+    cdp::browser_protocol::network::EventLoadingFinished,
 };
 use tokio::task::spawn_blocking;
-use tokio::time::{sleep, timeout, Duration};
+use tokio::time::{Duration, sleep, timeout};
 
 use chromiumoxide::cdp::browser_protocol::network::GetResponseBodyParams;
 use futures::StreamExt;

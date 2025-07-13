@@ -55,7 +55,9 @@ impl PlayerStore {
         rematch_url: &str,
     ) -> Result<(), RegisterError> {
         if !rematch_url.starts_with("https://u.gg/rematch/profile/") {
-            return Err(RegisterError::WrongUrl(String::from("ton URL doit ressembler à https://u.gg/rematch/profile/steam/La%20m%C3%A9sange%20du%20Val%20d'Oise/76561198355389674")));
+            return Err(RegisterError::WrongUrl(String::from(
+                "ton URL doit ressembler à https://u.gg/rematch/profile/steam/La%20m%C3%A9sange%20du%20Val%20d'Oise/76561198355389674",
+            )));
         }
 
         let existing_player = self
@@ -81,5 +83,11 @@ impl PlayerStore {
         self.players = result;
 
         Ok(())
+    }
+
+    pub fn get_player_stat(&self, discord_id: u64) -> Option<&PlayerWithStats> {
+        self.players
+            .iter()
+            .find(|player| player.discord_id == discord_id)
     }
 }
