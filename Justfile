@@ -9,3 +9,6 @@ format:
 
 docker_build:
 		docker build -t camzor/rebot .
+
+docker_push:
+		docker push camzor/rebot
