@@ -1,14 +1,10 @@
-use log::{debug, info};
-use rebot::{discord::Discord, player_store::PlayerStore};
+use log::info;
+use rebot::{config::Config, discord::Discord, player_store::PlayerStore};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    if let Err(_) = dotenvy::dotenv() {
-        debug!(".env file not found");
-    }
-    env_logger::init();
-
-    let store = PlayerStore::with_data();
+    let config = Config::new();
+    let store = PlayerStore::load_database(config);
     let mut discord = Discord::new(store).await;
 
     tokio::select! {

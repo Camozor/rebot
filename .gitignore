@@ -2,5 +2,6 @@
 
 .direnv/
 .env
+.db.json
 
 debug_container.sh
