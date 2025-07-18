@@ -8,8 +8,10 @@ format:
 		cargo fmt
 		yamlfmt .
 
-docker_build:
-		docker build -t camzor/rebot .
+docker_build version:
+		echo "Building image {{version}}"
+		docker build -t camzor/rebot:{{version}} .
 
-docker_push:
-		docker push camzor/rebot
+docker_push version:
+		echo "Pushing image {{version}}"
+		docker push camzor/rebot:{{version}}

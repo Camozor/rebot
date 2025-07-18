@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use futures::lock::Mutex;
 use log::{debug, info};
 use poise::serenity_prelude::{self as serenity, GuildId};
@@ -48,9 +50,13 @@ async fn refresh(ctx: Context<'_>) -> Result<(), Error> {
     ctx.say(response).await?;
 
     let mut player_store = ctx.data().player_store.lock().await;
+
+    let now = Instant::now();
     let _ = player_store.refresh_all().await;
 
-    debug!("Player store state: {:?}", player_store);
+    player_store.print();
+
+    info!("Players refresh success in {}s", now.elapsed().as_secs());
 
     Ok(())
 }
