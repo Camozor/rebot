@@ -1,7 +1,6 @@
 use futures::lock::Mutex;
 use log::{debug, info};
 use poise::serenity_prelude::{self as serenity, GuildId};
-use std::env;
 
 use crate::player_store::{PlayerStore, RegisterError};
 
@@ -76,11 +75,24 @@ async fn stat(
             "{} n'est pas enregistré, pense à utiliser la commande /register",
             u.name
         ),
-        Some(player) => format!("**{}** est rang **{}**", u.name, player.rank.pretty_rank()),
+        Some(player) => format!(
+            "**{}** aussi connu sous le nom **{}** est rang **{}**",
+            compute_pretty_player_name(&u.name),
+            player.display_name,
+            player.rank.pretty_rank()
+        ),
     };
 
     ctx.say(response).await?;
     Ok(())
+}
+
+fn compute_pretty_player_name(name: &str) -> String {
+    let mut c = name.chars();
+    match c.next() {
+        None => String::new(),
+        Some(first_char) => first_char.to_uppercase().collect::<String>() + c.as_str(),
+    }
 }
 
 pub struct Discord {
@@ -90,7 +102,7 @@ pub struct Discord {
 impl Discord {
     pub async fn new(store: PlayerStore) -> Self {
         info!("Configuring discord bot");
-        let discord_token = env::var("DISCORD_TOKEN").expect("Configure your discord token bro!");
+        let config = store.config.clone();
         let intents = serenity::GatewayIntents::non_privileged();
 
         let framework = poise::Framework::builder()
@@ -99,10 +111,10 @@ impl Discord {
                 ..Default::default()
             })
             .setup(|ctx, _ready, framework| {
-                let discord_server_id = env::var("DISCORD_SERVER_ID");
+                let discord_server_id = config.discord_server_id;
 
                 let mutex_store = Mutex::new(store);
-                if discord_server_id.is_ok() {
+                if discord_server_id.is_some() {
                     debug!("Discord commands registered in dev mode");
                     Box::pin(async move {
                         let server_id = discord_server_id.unwrap();
@@ -132,11 +144,11 @@ impl Discord {
             })
             .build();
 
-        let client = serenity::ClientBuilder::new(discord_token, intents)
+        let client = serenity::ClientBuilder::new(config.discord_token, intents)
             .framework(framework)
             .await
             .expect("Could not instantiate discord client");
-        Discord { client: client }
+        Discord { client }
     }
 
     pub async fn start(&mut self) {

@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
 pub struct PlayerStat {
@@ -12,7 +12,7 @@ pub struct Player {
     pub level: i32,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Rank {
     pub current_league: i32,
     pub current_division: i32,
@@ -22,15 +22,16 @@ impl Rank {
     pub fn pretty_rank(&self) -> String {
         let league = self.current_league;
         let pretty_league = match league {
-            0 => String::from("Bronze"),
-            1 => String::from("Silver"),
-            2 => String::from("Gold"),
-            3 => String::from("Platinum"),
-            4 => String::from("Diamond"),
-            5 => String::from("Elite"),
-            _ => String::from("Unknown"),
+            0 => String::from("bronze"),
+            1 => String::from("argent"),
+            2 => String::from("or"),
+            3 => String::from("platine"),
+            4 => String::from("diamant"),
+            5 => String::from("élite"),
+            _ => String::from("inconnu"),
         };
 
-        format!("{} {}", pretty_league, self.current_division)
+        let division = self.current_division + 1;
+        format!("{} {}", pretty_league, division)
     }
 }
