@@ -31,7 +31,7 @@ impl Rank {
             _ => String::from("inconnu"),
         };
 
-        let division = self.current_division + 1;
+        let division = 3 - self.current_division;
         format!("{} {}", pretty_league, division)
     }
 }
