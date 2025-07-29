@@ -1,13 +1,13 @@
-use std::time::Instant;
+use std::{sync::Arc, time::Instant};
 
-use futures::lock::Mutex;
 use log::{debug, info};
 use poise::serenity_prelude::{self as serenity, GuildId};
+use tokio::sync::Mutex;
 
 use crate::player_store::{PlayerStore, RegisterError};
 
 struct DiscordState {
-    pub player_store: Mutex<PlayerStore>,
+    pub player_store: Arc<Mutex<PlayerStore>>,
 }
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, DiscordState, Error>;
@@ -106,9 +106,9 @@ pub struct Discord {
 }
 
 impl Discord {
-    pub async fn new(store: PlayerStore) -> Self {
+    pub async fn new(store: Arc<Mutex<PlayerStore>>) -> Self {
         info!("Configuring discord bot");
-        let config = store.config.clone();
+        let config = store.lock().await.config.clone();
         let intents = serenity::GatewayIntents::non_privileged();
 
         let framework = poise::Framework::builder()
@@ -119,7 +119,6 @@ impl Discord {
             .setup(|ctx, _ready, framework| {
                 let discord_server_id = config.discord_server_id;
 
-                let mutex_store = Mutex::new(store);
                 if discord_server_id.is_some() {
                     debug!("Discord commands registered in dev mode");
                     Box::pin(async move {
@@ -134,7 +133,7 @@ impl Discord {
                         )
                         .await?;
                         Ok(DiscordState {
-                            player_store: mutex_store,
+                            player_store: store,
                         })
                     })
                 } else {
@@ -143,7 +142,7 @@ impl Discord {
                         poise::builtins::register_globally(ctx, &framework.options().commands)
                             .await?;
                         Ok(DiscordState {
-                            player_store: mutex_store,
+                            player_store: store,
                         })
                     })
                 }
