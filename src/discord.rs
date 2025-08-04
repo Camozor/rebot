@@ -82,11 +82,55 @@ async fn stat(
             u.name
         ),
         Some(player) => format!(
-            "**{}** aussi connu sous le nom **{}** est rang **{}**",
+            "**{}** aussi connu sous le nom **{}** est rang **{}**, **{}**",
             compute_pretty_player_name(&u.name),
             player.display_name,
-            player.rank.pretty_rank()
+            player.rank.pretty_rank(),
+            player.get_pretty_stats()
         ),
+    };
+
+    ctx.say(response).await?;
+    Ok(())
+}
+
+#[poise::command(slash_command)]
+async fn stats(ctx: Context<'_>) -> Result<(), Error> {
+    let u = ctx.author();
+    info!(
+        "Stats command for author id={}, target user id={}",
+        ctx.author().id,
+        u.id
+    );
+
+    let player_store = ctx.data().player_store.lock().await;
+    let all_players = player_store.get_all_players_stat();
+
+    let stats: Vec<String> = all_players
+        .iter()
+        .map(|player| {
+            format!(
+                "* {} - {} - {}",
+                compute_pretty_player_name(&player.display_name),
+                player.rank.pretty_rank(),
+                player.get_pretty_stats()
+            )
+        })
+        .collect();
+    let players_pretty_stat = stats.join("\n");
+
+    let try_hard_player = player_store.find_try_harder();
+
+    let response = match try_hard_player {
+        None => players_pretty_stat,
+        Some(p) => {
+            let player = compute_pretty_player_name(&p.display_name);
+            let hours_played = p.estimate_hours_played();
+            format!(
+                "{}\nEt la palme d'or du plus gros try harder revient à {} avec plus de {}h de jeu !",
+                players_pretty_stat, player, hours_played,
+            )
+        }
     };
 
     ctx.say(response).await?;
@@ -113,7 +157,7 @@ impl Discord {
 
         let framework = poise::Framework::builder()
             .options(poise::FrameworkOptions {
-                commands: vec![register(), refresh(), stat()],
+                commands: vec![register(), refresh(), stat(), stats()],
                 ..Default::default()
             })
             .setup(|ctx, _ready, framework| {

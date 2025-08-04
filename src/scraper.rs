@@ -11,7 +11,7 @@ use chromiumoxide::cdp::browser_protocol::network::GetResponseBodyParams;
 use futures::StreamExt;
 use log::{debug, error, info};
 
-use crate::model::player_stat::PlayerStat;
+use crate::model::player_stat::UggPlayerStat;
 use crate::player_store::{PlayerWithStats, RegisteredPlayer};
 
 pub struct Scraper {
@@ -72,6 +72,7 @@ impl Scraper {
                     discord_id: player.discord_id,
                     display_name: player_stat.player.display_name,
                     rank: player_stat.rank,
+                    stats: player_stat.lifetime_stats,
                 });
             } else {
                 error!("Failed to fetch stats for {}", player.discord_id);
@@ -81,7 +82,7 @@ impl Scraper {
         players_stats
     }
 
-    async fn get_player_stats(&mut self, url: &str) -> Result<PlayerStat, ScrapeError> {
+    async fn get_player_stats(&mut self, url: &str) -> Result<UggPlayerStat, ScrapeError> {
         debug!("get_player_stats - start for url={}", url);
         let page = self
             .browser
@@ -141,7 +142,7 @@ impl Scraper {
                     let body = response_body.body.clone();
                     debug!("event {:?} content: {}", event.request_id, body);
 
-                    let player_stat: PlayerStat = serde_json::from_str(&body).unwrap();
+                    let player_stat: UggPlayerStat = serde_json::from_str(&body).unwrap();
                     return Ok(player_stat);
                 }
             }

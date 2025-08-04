@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     config::Config,
-    model::player_stat::Rank,
+    model::player_stat::{UggLifetimeStats, UggRank},
     scraper::{Scraper, ScraperInitError},
 };
 
@@ -18,11 +18,47 @@ pub struct RegisteredPlayer {
     pub rematch_url: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct PlayerWithStats {
     pub discord_id: u64,
     pub display_name: String,
-    pub rank: Rank,
+    pub rank: UggRank,
+    pub stats: UggLifetimeStats,
+}
+
+impl PlayerWithStats {
+    pub fn get_all_matches(&self) -> i32 {
+        self.stats.all.matches_played
+    }
+
+    pub fn get_wins(&self) -> i32 {
+        self.stats.all.wins
+    }
+
+    pub fn get_loses(&self) -> i32 {
+        self.get_all_matches() - self.get_wins()
+    }
+
+    pub fn get_win_rate(&self) -> String {
+        let ratio = self.get_wins() as f32 / self.get_all_matches() as f32;
+        let percent = ratio * 100.;
+
+        format!("{:.1}", percent)
+    }
+
+    pub fn get_pretty_stats(&self) -> String {
+        format!(
+            "{}W {}L, {}% Win Rate",
+            self.get_wins(),
+            self.get_loses(),
+            self.get_win_rate()
+        )
+    }
+
+    pub fn estimate_hours_played(&self) -> i32 {
+        let minutes = self.get_all_matches() * 6;
+        minutes / 60
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -156,5 +192,15 @@ impl PlayerStore {
         self.players
             .iter()
             .find(|player| player.discord_id == discord_id)
+    }
+
+    pub fn get_all_players_stat(&self) -> Vec<PlayerWithStats> {
+        self.players.clone()
+    }
+
+    pub fn find_try_harder(&self) -> Option<&PlayerWithStats> {
+        self.players
+            .iter()
+            .max_by(|p1, p2| p1.get_all_matches().cmp(&p2.get_all_matches()))
     }
 }

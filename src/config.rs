@@ -12,6 +12,7 @@ pub struct Config {
     pub database_path: String,
 
     pub cron_interval_minute: u32,
+    pub skip_cron: bool,
 }
 
 impl Config {
@@ -42,11 +43,15 @@ impl Config {
             Err(_) => DEFAULT_CRON_INTERVAL_MINUTE,
         };
 
+        let skip_cron = env::var("SKIP_CRON").unwrap_or(String::from("false"));
+        let skip_cron: bool = skip_cron.parse().unwrap_or(false);
+
         Config {
             discord_token,
             discord_server_id,
             database_path,
             cron_interval_minute,
+            skip_cron,
         }
     }
 }
