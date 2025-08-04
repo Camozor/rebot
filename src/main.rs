@@ -36,6 +36,8 @@ async fn cron_refresh(store: Arc<Mutex<PlayerStore>>) {
         store.config.cron_interval_minute as u64 * 60
     };
     let mut interval = time::interval(Duration::new(interval_second, 0));
+    interval.tick().await;
+
     loop {
         let execute_cron = !store.lock().await.config.skip_cron;
         if execute_cron {
