@@ -81,15 +81,15 @@ pub enum RefreshError {
 }
 
 impl PlayerStore {
-    pub fn new(config: Config) -> Self {
+    pub fn new(config: &Config) -> Self {
         PlayerStore {
-            config: config,
+            config: config.clone(),
             registered_players: vec![],
             players: vec![],
         }
     }
 
-    pub fn load_database(config: Config) -> Self {
+    pub fn load_database(config: &Config) -> Self {
         let json_data = fs::read_to_string(&config.database_path);
         let json_data = match json_data {
             Ok(v) => v,
@@ -101,11 +101,11 @@ impl PlayerStore {
 
         let store: PlayerStore = serde_json::from_str(&json_data).unwrap_or_else(|e| {
             error!("Could not parse {} database, {}", config.database_path, e);
-            return PlayerStore::new(config.clone());
+            return PlayerStore::new(config);
         });
 
         PlayerStore {
-            config: config,
+            config: config.clone(),
             registered_players: store.registered_players,
             players: store.players,
         }

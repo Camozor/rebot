@@ -16,7 +16,7 @@ struct DiscordState {
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, DiscordState, Error>;
 
-use songbird::{Event, EventContext, EventHandler, SerenityInit, TrackEvent, input::File};
+use songbird::{input::File, Event, EventContext, EventHandler, SerenityInit, TrackEvent};
 
 struct TrackEndNotifier {
     notify: Arc<tokio::sync::Notify>,
@@ -42,7 +42,7 @@ async fn marius(ctx: Context<'_>) -> Result<(), Error> {
         let voice_state = guild
             .voice_states
             .get(&user_id)
-            .ok_or("You are not in a voice channel")?;
+            .ok_or("Rejoins le serveur vocal avant d'exécuter cette commande ! 😉")?;
         voice_state
             .channel_id
             .ok_or("No channel ID found in voice state")?
