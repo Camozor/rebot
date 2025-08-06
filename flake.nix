@@ -14,9 +14,11 @@
           clippy
           pkg-config
           openssl
+          cmake
           docker
           just
           chromium
+          libopus
           just
           yamlfmt
         ];

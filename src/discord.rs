@@ -1,8 +1,12 @@
-use std::{sync::Arc, time::Instant};
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use log::{debug, info};
 use poise::serenity_prelude::{self as serenity, GuildId};
-use tokio::sync::Mutex;
+use serenity::all::GatewayIntents;
+use tokio::{sync::Mutex, time::timeout};
 
 use crate::player_store::{PlayerStore, RegisterError};
 
@@ -11,6 +15,66 @@ struct DiscordState {
 }
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, DiscordState, Error>;
+
+use songbird::{Event, EventContext, EventHandler, SerenityInit, TrackEvent, input::File};
+
+struct TrackEndNotifier {
+    notify: Arc<tokio::sync::Notify>,
+}
+
+#[async_trait::async_trait]
+impl EventHandler for TrackEndNotifier {
+    async fn act(&self, ctx: &EventContext<'_>) -> Option<Event> {
+        if let EventContext::Track(_) = ctx {
+            self.notify.notify_one();
+        }
+        None
+    }
+}
+
+#[poise::command(slash_command)]
+async fn marius(ctx: Context<'_>) -> Result<(), Error> {
+    let user_id = ctx.author().id;
+    let guild_id = ctx.guild_id().unwrap();
+    let channel_id = {
+        let cache = &ctx.serenity_context().cache;
+        let guild = cache.guild(guild_id).ok_or("Guild not found in cache")?;
+        let voice_state = guild
+            .voice_states
+            .get(&user_id)
+            .ok_or("You are not in a voice channel")?;
+        voice_state
+            .channel_id
+            .ok_or("No channel ID found in voice state")?
+    };
+
+    let manager = songbird::get(ctx.serenity_context())
+        .await
+        .expect("Songbird Voice client placed in at initialisation.")
+        .clone();
+
+    let join = manager.join(guild_id, channel_id).await?;
+
+    let source = File::new("audio/mario.mp3");
+
+    let mut handle = join.lock().await;
+
+    let notify = Arc::new(tokio::sync::Notify::new());
+    let handler_notify = notify.clone();
+    handle.add_global_event(
+        Event::Track(TrackEvent::End),
+        TrackEndNotifier {
+            notify: handler_notify,
+        },
+    );
+    handle.play_input(source.into());
+
+    let _ = timeout(Duration::from_secs(30), notify.notified()).await;
+
+    let _ = handle.leave().await;
+
+    Ok(())
+}
 
 #[poise::command(slash_command)]
 async fn register(
@@ -153,11 +217,11 @@ impl Discord {
     pub async fn new(store: Arc<Mutex<PlayerStore>>) -> Self {
         info!("Configuring discord bot");
         let config = store.lock().await.config.clone();
-        let intents = serenity::GatewayIntents::non_privileged();
+        let intents = GatewayIntents::GUILD_VOICE_STATES | GatewayIntents::GUILDS;
 
         let framework = poise::Framework::builder()
             .options(poise::FrameworkOptions {
-                commands: vec![register(), refresh(), stat(), stats()],
+                commands: vec![register(), refresh(), stat(), stats(), marius()],
                 ..Default::default()
             })
             .setup(|ctx, _ready, framework| {
@@ -195,6 +259,7 @@ impl Discord {
 
         let client = serenity::ClientBuilder::new(config.discord_token, intents)
             .framework(framework)
+            .register_songbird()
             .await
             .expect("Could not instantiate discord client");
         Discord { client }
