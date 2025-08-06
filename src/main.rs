@@ -17,14 +17,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cron_store = store.clone();
     let mut discord = Discord::new(store).await;
 
-    tokio::spawn(async move {
-        start_http_server(&config)
-            .launch()
-            .await
-            .expect("Failed to launch HTTP server.")
-    });
-
     tokio::select! {
+        _ = start_http_server(&config)
+            .launch() => {
+            info!("Server stopped.");
+        }
         _ = discord.start() => {
             info!("Discord bot stopped.");
         }
