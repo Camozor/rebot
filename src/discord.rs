@@ -6,7 +6,7 @@ use std::{
 use log::{debug, info};
 use poise::serenity_prelude::{self as serenity, GuildId};
 use serenity::all::GatewayIntents;
-use tokio::{sync::Mutex, time::timeout};
+use tokio::{sync::Mutex, sync::RwLock, time::timeout};
 
 use crate::player_store::{PlayerStore, RegisterError};
 
@@ -34,10 +34,22 @@ impl EventHandler for TrackEndNotifier {
 
 #[poise::command(slash_command)]
 async fn marius(ctx: Context<'_>) -> Result<(), Error> {
+    let context = ctx.serenity_context();
     let user_id = ctx.author().id;
     let guild_id = ctx.guild_id().unwrap();
+
+    play_marius(context, guild_id, user_id).await
+}
+
+pub async fn play_marius(
+    serenity_context: &serenity::prelude::Context,
+    guild_id: serenity::GuildId,
+    user_id: serenity::UserId,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    info!("guild_id={}", guild_id);
+    info!("user_id={}", user_id);
     let channel_id = {
-        let cache = &ctx.serenity_context().cache;
+        let cache = &serenity_context.cache;
         let guild = cache.guild(guild_id).ok_or("Guild not found in cache")?;
         let voice_state = guild
             .voice_states
@@ -48,7 +60,7 @@ async fn marius(ctx: Context<'_>) -> Result<(), Error> {
             .ok_or("No channel ID found in voice state")?
     };
 
-    let manager = songbird::get(ctx.serenity_context())
+    let manager = songbird::get(serenity_context)
         .await
         .expect("Songbird Voice client placed in at initialisation.")
         .clone();
@@ -211,6 +223,29 @@ fn compute_pretty_player_name(name: &str) -> String {
 
 pub struct Discord {
     client: serenity::Client,
+    data: SharedData,
+}
+
+#[derive(Clone)]
+struct SharedData {
+    discord_ctx: Arc<RwLock<Option<Arc<serenity::prelude::Context>>>>,
+}
+
+struct Handler {
+    shared: SharedData,
+}
+
+#[serenity::async_trait]
+impl serenity::client::EventHandler for Handler {
+    async fn ready(
+        &self,
+        ctx: poise::serenity_prelude::Context,
+        _: serenity::model::gateway::Ready,
+    ) {
+        info!("Bot is connected!");
+        let mut context_lock = self.shared.discord_ctx.write().await;
+        *context_lock = Some(Arc::new(ctx));
+    }
 }
 
 impl Discord {
@@ -257,16 +292,33 @@ impl Discord {
             })
             .build();
 
+        let shared = SharedData {
+            discord_ctx: Arc::new(RwLock::new(None)),
+        };
+
+        let handler = Handler {
+            shared: shared.clone(),
+        };
+
         let client = serenity::ClientBuilder::new(config.discord_token, intents)
             .framework(framework)
+            .event_handler(handler)
             .register_songbird()
             .await
             .expect("Could not instantiate discord client");
-        Discord { client }
+
+        Discord {
+            client,
+            data: shared,
+        }
     }
 
     pub async fn start(&mut self) {
         info!("Starting discord bot");
         self.client.start().await.unwrap();
+    }
+
+    pub fn get_context(&self) -> Arc<RwLock<Option<Arc<serenity::prelude::Context>>>> {
+        self.data.discord_ctx.clone()
     }
 }

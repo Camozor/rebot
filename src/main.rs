@@ -18,7 +18,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut discord = Discord::new(store).await;
 
     tokio::select! {
-        _ = start_http_server(&config)
+        _ = start_http_server(&config, discord.get_context())
             .launch() => {
             info!("Server stopped.");
         }
