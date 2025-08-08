@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     config::Config,
     model::player_stat::{UggLifetimeStats, UggRank},
-    scraper::{Scraper, ScraperInitError},
+    scraper::Scraper,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -170,19 +170,11 @@ impl PlayerStore {
 
     pub async fn refresh_all(&mut self) -> Result<(), RefreshError> {
         let scraper = Scraper::new().await;
-        let mut scraper = match scraper {
-            Ok(scraper) => scraper,
-            Err(ScraperInitError::Browser(error)) => {
-                error!("Error initializing scraper: {}", error);
-                return Err(RefreshError::Err);
-            }
-        };
+        let mut scraper = scraper.map_err(|_| RefreshError::Err)?;
 
         debug!("Scraper created");
 
-        let result = scraper.get_players_stats(&self.registered_players).await;
-        self.players = result;
-
+        self.players = scraper.get_players_stats(&self.registered_players).await;
         self.write_database();
 
         Ok(())

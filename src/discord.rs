@@ -3,7 +3,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use log::{debug, info};
+use log::{debug, error, info};
 use poise::serenity_prelude::{self as serenity, GuildId};
 use serenity::all::GatewayIntents;
 use tokio::{sync::Mutex, sync::RwLock, time::timeout};
@@ -16,7 +16,7 @@ struct DiscordState {
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, DiscordState, Error>;
 
-use songbird::{input::File, Event, EventContext, EventHandler, SerenityInit, TrackEvent};
+use songbird::{Event, EventContext, EventHandler, SerenityInit, TrackEvent, input::File};
 
 struct TrackEndNotifier {
     notify: Arc<tokio::sync::Notify>,
@@ -128,7 +128,9 @@ async fn refresh(ctx: Context<'_>) -> Result<(), Error> {
     let mut player_store = ctx.data().player_store.lock().await;
 
     let now = Instant::now();
-    let _ = player_store.refresh_all().await;
+    if let Err(_) = player_store.refresh_all().await {
+        error!("Could not refresh");
+    }
 
     player_store.print();
 

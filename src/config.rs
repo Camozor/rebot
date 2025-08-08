@@ -11,6 +11,7 @@ pub struct Config {
     pub discord_server_id: Option<String>,
 
     pub http_port: u16,
+    pub admin_api_key: String,
 
     pub database_path: String,
 
@@ -24,7 +25,6 @@ impl Config {
             debug!(".env file not found");
         }
 
-        env_logger::init();
         let discord_token = env::var("DISCORD_TOKEN").expect("Configure your discord token bro!");
         let discord_server_id = env::var("DISCORD_SERVER_ID").ok();
 
@@ -32,6 +32,8 @@ impl Config {
             .ok()
             .and_then(|port| port.trim().parse().ok())
             .unwrap_or(DEFAULT_HTTP_PORT);
+
+        let admin_api_key = env::var("ADMIN_API_KEY").ok().unwrap_or(String::from(""));
 
         let database_path = env::var("DATABASE_PATH").expect("Configure your database path bro!");
 
@@ -49,6 +51,7 @@ impl Config {
             discord_token,
             discord_server_id,
             http_port,
+            admin_api_key,
             database_path,
             cron_interval_minute,
             skip_cron,

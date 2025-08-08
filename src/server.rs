@@ -3,8 +3,8 @@ use std::sync::Arc;
 use rocket::http::Status;
 use rocket::request::{FromRequest, Outcome, Request};
 
-use rocket::{post, routes};
 use rocket::{Build, Rocket};
+use rocket::{post, routes};
 
 use crate::config::Config;
 use crate::discord::play_marius;
@@ -25,9 +25,9 @@ impl<'r> FromRequest<'r> for ApiKey {
     type Error = ApiKeyError;
 
     async fn from_request(req: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-        /// Returns true if `key` is a valid API key string.
         fn is_valid(key: &str) -> bool {
-            key == "valid_api_key"
+            let my_config = Config::new();
+            key == my_config.admin_api_key
         }
 
         match req.headers().get_one("authorization") {
@@ -56,14 +56,15 @@ async fn hello(
 }
 
 pub fn start_http_server(
-    config: &Config,
+    my_config: &Config,
     discord_ctx: Arc<RwLock<Option<Arc<serenity::prelude::Context>>>>,
 ) -> Rocket<Build> {
     let config = rocket::Config {
-        port: config.http_port,
+        port: my_config.http_port,
         ..rocket::Config::default()
     };
     rocket::custom(config)
+        .manage(my_config.clone())
         .manage(discord_ctx)
         .mount("/", routes![hello])
 }

@@ -11,6 +11,8 @@ use tokio::time;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::init();
+
     let config = Config::new();
     let store = PlayerStore::load_database(&config);
     let store = Arc::new(Mutex::new(store));
@@ -49,10 +51,8 @@ async fn cron_refresh(store: Arc<Mutex<PlayerStore>>) {
         if execute_cron {
             debug!("Start refresh");
             let _ = store.lock().await.refresh_all().await;
-            debug!("End refresh");
         }
 
         interval.tick().await;
-        debug!("End wait");
     }
 }
