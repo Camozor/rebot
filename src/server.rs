@@ -3,9 +3,9 @@ use std::sync::Arc;
 use rocket::http::Status;
 use rocket::request::{FromRequest, Outcome, Request};
 
-use rocket::serde::{json::Json, Deserialize};
-use rocket::{post, routes};
+use rocket::serde::{Deserialize, json::Json};
 use rocket::{Build, Rocket};
+use rocket::{post, routes};
 
 use crate::config::Config;
 use crate::discord::play_marius;

@@ -16,7 +16,7 @@ struct DiscordState {
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, DiscordState, Error>;
 
-use songbird::{input::File, Event, EventContext, EventHandler, SerenityInit, TrackEvent};
+use songbird::{Event, EventContext, EventHandler, SerenityInit, TrackEvent, input::File};
 
 struct TrackEndNotifier {
     notify: Arc<tokio::sync::Notify>,

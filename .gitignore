@@ -5,3 +5,4 @@
 .db.json
 
 debug_container.sh
+endpoint_admin.sh
