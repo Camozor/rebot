@@ -16,7 +16,7 @@ struct DiscordState {
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, DiscordState, Error>;
 
-use songbird::{Event, EventContext, EventHandler, SerenityInit, TrackEvent, input::File};
+use songbird::{input::File, Event, EventContext, EventHandler, SerenityInit, TrackEvent};
 
 struct TrackEndNotifier {
     notify: Arc<tokio::sync::Notify>,
@@ -71,8 +71,8 @@ pub async fn play_marius(
 
     let mut handle = join.lock().await;
 
-    let notify = Arc::new(tokio::sync::Notify::new());
-    let handler_notify = notify.clone();
+    let track_end_notify = Arc::new(tokio::sync::Notify::new());
+    let handler_notify = track_end_notify.clone();
     handle.add_global_event(
         Event::Track(TrackEvent::End),
         TrackEndNotifier {
@@ -81,7 +81,7 @@ pub async fn play_marius(
     );
     handle.play_input(source.into());
 
-    let _ = timeout(Duration::from_secs(30), notify.notified()).await;
+    let _ = timeout(Duration::from_secs(30), track_end_notify.notified()).await;
 
     let _ = handle.leave().await;
 

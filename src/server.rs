@@ -3,8 +3,9 @@ use std::sync::Arc;
 use rocket::http::Status;
 use rocket::request::{FromRequest, Outcome, Request};
 
-use rocket::{Build, Rocket};
+use rocket::serde::{json::Json, Deserialize};
 use rocket::{post, routes};
+use rocket::{Build, Rocket};
 
 use crate::config::Config;
 use crate::discord::play_marius;
@@ -38,17 +39,24 @@ impl<'r> FromRequest<'r> for ApiKey {
     }
 }
 
-#[post("/marius")]
+#[derive(Deserialize)]
+#[serde(crate = "rocket::serde")]
+struct MariusBody {
+    guild_id: u64,
+    user_id: u64,
+}
+
+#[post("/marius", data = "<body>")]
 async fn hello(
     _key: ApiKey,
     discord_ctx: &State<Arc<RwLock<Option<Arc<serenity::prelude::Context>>>>>,
+    body: Json<MariusBody>,
 ) -> &'static str {
     let ctx_lock = discord_ctx.read().await;
 
     match &*ctx_lock {
         Some(ctx) => {
-            // TODO parse body
-            let _ = play_marius(ctx, 997501722589143163.into(), 428258972156559362.into()).await;
+            let _ = play_marius(ctx, body.guild_id.into(), body.user_id.into()).await;
             "Success"
         }
         None => "Fail",
