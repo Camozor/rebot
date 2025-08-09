@@ -47,7 +47,7 @@ struct MariusBody {
 }
 
 #[post("/marius", data = "<body>")]
-async fn hello(
+async fn marius(
     _key: ApiKey,
     discord_ctx: &State<Arc<RwLock<Option<Arc<serenity::prelude::Context>>>>>,
     body: Json<MariusBody>,
@@ -69,10 +69,11 @@ pub fn start_http_server(
 ) -> Rocket<Build> {
     let config = rocket::Config {
         port: my_config.http_port,
+        address: "0.0.0.0".parse().unwrap(),
         ..rocket::Config::default()
     };
     rocket::custom(config)
         .manage(my_config.clone())
         .manage(discord_ctx)
-        .mount("/", routes![hello])
+        .mount("/", routes![marius])
 }
