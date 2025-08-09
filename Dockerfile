@@ -1,10 +1,10 @@
 FROM rust:alpine3.22 AS builder
 
-# Install necessary build tools and headers
 RUN apk add --no-cache \
     musl-dev \
     gcc \
     make \
+	cmake \
     libc-dev \
     linux-headers \
     openssl-dev \
@@ -24,6 +24,7 @@ FROM alpine:3.22
 
 RUN apk add --no-cache \
     chromium \
+	opus \
     nss \
     freetype \
     harfbuzz \
@@ -37,6 +38,8 @@ WORKDIR /app
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 COPY --from=builder /app/target/release/rebot .
 RUN chown -R appuser:appgroup /app
+
+COPY audio audio
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
 use log::{debug, info};
-use rebot::{config::Config, discord::Discord, player_store::PlayerStore};
+use rebot::{
+    config::Config, discord::Discord, player_store::PlayerStore, server::start_http_server,
+};
 use tokio::sync::Mutex;
 
 use std::time::Duration;
@@ -9,13 +11,19 @@ use tokio::time;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::init();
+
     let config = Config::new();
-    let store = PlayerStore::load_database(config);
+    let store = PlayerStore::load_database(&config);
     let store = Arc::new(Mutex::new(store));
     let cron_store = store.clone();
     let mut discord = Discord::new(store).await;
 
     tokio::select! {
+        _ = start_http_server(&config, discord.get_context())
+            .launch() => {
+            info!("Server stopped.");
+        }
         _ = discord.start() => {
             info!("Discord bot stopped.");
         }
@@ -43,10 +51,8 @@ async fn cron_refresh(store: Arc<Mutex<PlayerStore>>) {
         if execute_cron {
             debug!("Start refresh");
             let _ = store.lock().await.refresh_all().await;
-            debug!("End refresh");
         }
 
         interval.tick().await;
-        debug!("End wait");
     }
 }

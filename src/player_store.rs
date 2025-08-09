@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     config::Config,
     model::player_stat::{UggLifetimeStats, UggRank},
-    scraper::{Scraper, ScraperInitError},
+    scraper::Scraper,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -81,15 +81,15 @@ pub enum RefreshError {
 }
 
 impl PlayerStore {
-    pub fn new(config: Config) -> Self {
+    pub fn new(config: &Config) -> Self {
         PlayerStore {
-            config: config,
+            config: config.clone(),
             registered_players: vec![],
             players: vec![],
         }
     }
 
-    pub fn load_database(config: Config) -> Self {
+    pub fn load_database(config: &Config) -> Self {
         let json_data = fs::read_to_string(&config.database_path);
         let json_data = match json_data {
             Ok(v) => v,
@@ -101,11 +101,11 @@ impl PlayerStore {
 
         let store: PlayerStore = serde_json::from_str(&json_data).unwrap_or_else(|e| {
             error!("Could not parse {} database, {}", config.database_path, e);
-            return PlayerStore::new(config.clone());
+            return PlayerStore::new(config);
         });
 
         PlayerStore {
-            config: config,
+            config: config.clone(),
             registered_players: store.registered_players,
             players: store.players,
         }
@@ -170,19 +170,11 @@ impl PlayerStore {
 
     pub async fn refresh_all(&mut self) -> Result<(), RefreshError> {
         let scraper = Scraper::new().await;
-        let mut scraper = match scraper {
-            Ok(scraper) => scraper,
-            Err(ScraperInitError::Browser(error)) => {
-                error!("Error initializing scraper: {}", error);
-                return Err(RefreshError::Err);
-            }
-        };
+        let mut scraper = scraper.map_err(|_| RefreshError::Err)?;
 
         debug!("Scraper created");
 
-        let result = scraper.get_players_stats(&self.registered_players).await;
-        self.players = result;
-
+        self.players = scraper.get_players_stats(&self.registered_players).await;
         self.write_database();
 
         Ok(())
