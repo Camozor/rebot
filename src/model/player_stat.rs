@@ -40,9 +40,14 @@ impl UggRank {
             2 => String::from("or"),
             3 => String::from("platine"),
             4 => String::from("diamant"),
-            5 => String::from("élite"),
+            5 => String::from("maître"),
+            6 => String::from("élite"),
             _ => String::from("inconnu"),
         };
+
+        if league == 6 {
+            return format!("{}", pretty_league);
+        }
 
         let division = 3 - self.current_division;
         format!("{} {}", pretty_league, division)

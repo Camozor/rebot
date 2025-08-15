@@ -11,9 +11,13 @@ use tokio::time;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    if let Err(_) = dotenvy::dotenv() {
+        debug!(".env file not found");
+    }
     env_logger::init();
 
     let config = Config::new();
+
     let store = PlayerStore::load_database(&config);
     let store = Arc::new(Mutex::new(store));
     let cron_store = store.clone();

@@ -1,7 +1,5 @@
 use std::env;
 
-use log::debug;
-
 const DEFAULT_CRON_INTERVAL_MINUTE: u32 = 60;
 const DEFAULT_HTTP_PORT: u16 = 8000;
 
@@ -21,10 +19,6 @@ pub struct Config {
 
 impl Config {
     pub fn new() -> Self {
-        if let Err(_) = dotenvy::dotenv() {
-            debug!(".env file not found");
-        }
-
         let discord_token = env::var("DISCORD_TOKEN").expect("Configure your discord token bro!");
         let discord_server_id = env::var("DISCORD_SERVER_ID").ok();
 
