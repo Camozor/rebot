@@ -22,7 +22,7 @@ pub struct RegisteredPlayer {
 pub struct PlayerWithStats {
     pub discord_id: u64,
     pub display_name: String,
-    pub rank: UggRank,
+    pub rank: Option<UggRank>,
     pub stats: UggLifetimeStats,
 }
 
@@ -40,7 +40,12 @@ impl PlayerWithStats {
     }
 
     pub fn get_win_rate(&self) -> String {
-        let ratio = self.get_wins() as f32 / self.get_all_matches() as f32;
+        let all_matches = self.get_all_matches() as f32;
+
+        if all_matches == 0.0 {
+            return format!("-");
+        }
+        let ratio = self.get_wins() as f32 / all_matches;
         let percent = ratio * 100.;
 
         format!("{:.1}", percent)
@@ -53,6 +58,33 @@ impl PlayerWithStats {
             self.get_loses(),
             self.get_win_rate()
         )
+    }
+
+    pub fn pretty_rank(&self) -> String {
+        if let None = self.rank {
+            return format!("non classé");
+        }
+
+        let rank = self.rank.clone().unwrap();
+
+        let league = rank.current_league;
+        let pretty_league = match league {
+            0 => String::from("bronze"),
+            1 => String::from("argent"),
+            2 => String::from("or"),
+            3 => String::from("platine"),
+            4 => String::from("diamant"),
+            5 => String::from("maître"),
+            6 => String::from("élite"),
+            _ => String::from("inconnu"),
+        };
+
+        if league == 6 {
+            return format!("{}", pretty_league);
+        }
+
+        let division = 3 - rank.current_division;
+        format!("{} {}", pretty_league, division)
     }
 
     pub fn estimate_hours_played(&self) -> i32 {

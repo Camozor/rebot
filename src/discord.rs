@@ -163,7 +163,7 @@ async fn stat(
             "**{}** aussi connu sous le nom **{}** est rang **{}**, **{}**",
             compute_pretty_player_name(&u.name),
             player.display_name,
-            player.rank.pretty_rank(),
+            player.pretty_rank(),
             player.get_pretty_stats()
         ),
     };
@@ -190,7 +190,7 @@ async fn stats(ctx: Context<'_>) -> Result<(), Error> {
             format!(
                 "* {} - {} - {}",
                 compute_pretty_player_name(&player.display_name),
-                player.rank.pretty_rank(),
+                player.pretty_rank(),
                 player.get_pretty_stats()
             )
         })
@@ -205,7 +205,7 @@ async fn stats(ctx: Context<'_>) -> Result<(), Error> {
             let player = compute_pretty_player_name(&p.display_name);
             let hours_played = p.estimate_hours_played();
             format!(
-                "{}\nEt la palme d'or du plus gros try harder revient à {} avec plus de {}h de jeu !",
+                "{}\nEt la palme d'or du plus gros try harder revient à {} avec plus de {}h de jeu cette saison !",
                 players_pretty_stat, player, hours_played,
             )
         }
